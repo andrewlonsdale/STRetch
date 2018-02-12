@@ -68,7 +68,7 @@ echo "// Number of threads to use for BWA" >> $toolspec
 echo "threads=8" >> $toolspec
 echo >> $toolspec
 echo "// For exome pipeline only ***Edit before running the exome pipeline***" >> $toolspec
-echo "EXOME_TARGET=\"path/to/exome_target_regions.bed\"" >> $toolspec
+echo "EXOME_TARGET=\"/STRetch/test/SCA8_region.bed\"" >> $toolspec
 echo >> $toolspec
 
 #set STRetch base directory
@@ -88,11 +88,11 @@ for c in $commands ; do
     echo "$c=\"$c_path\"" >> $toolspec
 done
 
-if [ ! -f $refdir/*dedup.sorted.bed ] ; then
-    mkdir -p $refdir
-    echo "Downloading reference data"
-    download_hg19
-fi
+#if [ ! -f $refdir/*dedup.sorted.bed ] ; then
+#    mkdir -p $refdir
+#    echo "Downloading reference data"
+#    download_hg19
+#fi
 
 echo >> $toolspec
 echo "// Path to reference data" >> $toolspec

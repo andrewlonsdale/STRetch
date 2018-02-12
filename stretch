@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+
+#STRetch wrapper for Docker version 
+
+PROGNAME="$(basename $0)"
+VERSION="0.0.1"
+
+# self-check
+error(){
+  error_code=$1
+  echo "ERROR: $2" >&2
+  echo "($PROGNAME wrapper version: $VERSION, error code: $error_code )" >&2
+  usage; 
+  exit $1
+}
+
+
+# Gets the command name without path
+cmd(){ echo `basename $0`; }
+
+# Help command output
+usage(){
+echo "\
+`cmd` [OPTION...]
+	-e exome mode, fastq.gz files asummed
+ 	-b wgs bam mode, bam files asummed
+	-w wgs mode, fastq.gz files asummed
+	-d download mode, download reference data and exit
+	[-r] reference data location, default reference-data
+	[-f] bed file location, default region.bed
+	[-i] input directory, default to current directory
+	[-o] output directory, default to results, error if exists
+	[-c] control with a control file
+
+A wrapper for running STRetch (https://github.com/Oshlack/STRetch/) inside a Docker container
+" | column -t -s ";" >&2
+}
+
+
+check_cmd_in_path(){
+  cmd=$1
+  which $cmd > /dev/null 2>&1 || error 1 "$cmd not found!"
+}
+
+check_cmd_in_path docker
+
+function download_hg19 {
+    wget --no-check-certificate -O reference-data.zip https://ndownloader.figshare.com/articles/4658701?private_link=1a39be9282c90c4860cd
+    unzip reference-data.zip -d reference-data 
+    rm reference-data.zip
+}
+
+
+STRETCH_MODE=""
+REFERENCE="$( cd "$(dirname "reference-data")" ; pwd -P )/reference-data/"
+BEDFILE="$( cd "$(dirname "region.bed")" ; pwd -P )/region.bed"
+INPUT="$(pwd)"
+OUTPUT="$(pwd)/results/"
+CONTROL=""
+CONTROLVOL=""
+CONTROLPAR=""
+
+while getopts ":ewbr:f:i:o:c:d" opt; do
+  case $opt in
+    d)
+      echo "LOG: download reference and exit" >&2
+      [ -f "reference-data.zip" ] && error 1 "reference zip exists"
+      download_hg19
+      exit 0
+      ;;
+    e)
+      echo "LOG: exome mode" >&2
+      STRETCH_MODE="exome"
+      ;;
+    w)
+      echo "LOG: wgs mode" >&2
+      STRETCH_MODE="wgs"
+      ;;
+    b)
+      echo "LOG: wgs-bam mode" >&2
+      STRETCH_MODE="wgs-bam"
+      ;;
+    r)
+      echo "LOG: reference data is $OPTARG" >&2
+      REFERENCE="$( cd "$(dirname "$OPTARG")" ; pwd -P )/$(basename "$OPTARG")"
+      ;;
+    f)
+      echo "LOG: bed file is $OPTARG" >&2
+      BEDFILE="$( cd "$(dirname "$OPTARG")" ; pwd -P )/$(basename "$OPTARG")"
+      ;;
+    i)
+      echo "LOG: input directory is $OPTARG" >&2
+      INPUT="$( cd "$(dirname "$OPTARG")" ; pwd -P )/$(basename "$OPTARG")"
+      ;;
+    o)
+      echo "LOG: output directory is $OPTARG" >&2
+      OUTPUT="$( cd "$(dirname "$OPTARG")" ; pwd -P )/$(basename "$OPTARG")"
+      ;;
+    c)
+      echo "LOG: control mode file is $OPTARG" >&2
+      CONTROL="$( cd "$(dirname "$OPTARG")" ; pwd -P )/$(basename "$OPTARG")"
+      CONTROLFILE=$(basename $CONTROL)
+      [ -f $CONTROL ] || error 1 "control file not found"
+      CONTROLVOL="-v $CONTROL:/input/$CONTROLFILE"
+      CONTROLPAR="-p CONTROL=/input/$CONTROLFILE"
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+[ "$STRETCH_MODE" == "" ] && error 1 "No mode selected"
+[ -f $BEDFILE ] || ( [ "$STRETCH_MODE"  != "wgs" ] && error 1 "bedfile not found")
+[ -d $REFERENCE ] || error 1 "reference data not found"
+[ -d $INPUT ] || error 1 "input directory not found"
+# create results dir
+mkdir $OUTPUT || error 2 "Output diretory exists"
+[ -d $OUTPUT ] || error 1 "Output directory not found"
+
+echo "LOG: Run Docker image:"
+# caller docker - replce with docker hub image link
+case $STRETCH_MODE in
+    exome)
+exec docker run -it -u $(id -u) -e HOME=/tmp/ -v $INPUT:/input  -v $OUTPUT:/output -v $REFERENCE:/STRetch/reference-data stretch /STRetch/stretch.bash exome
+        ;;
+    wgs-bam)
+exec docker run -it -u $(id -u) -v $INPUT:/input  -v $OUTPUT:/output -v $REFERENCE:/STRetch/reference-data -v $BEDFILE:/input/region.bed stretch /STRetch/stretch.bash wgs-bam
+        ;;
+    wgs)
+exec docker run -it -u $(id -u) -v $INPUT:/input  -v $OUTPUT:/output -v $REFERENCE:/STRetch/reference-data -v $BEDFILE:/STRetch/test/SCA8_region.bed $CONTROLVOL stretch /STRetch/stretch.bash wgs "$CONTROLPAR"
+        ;;
+    *)
+       echo "No STRetch mode defined"
+# You should have a default one too.
+esac
