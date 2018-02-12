@@ -124,13 +124,13 @@ echo "LOG: Run Docker image:"
 # caller docker - replce with docker hub image link
 case $STRETCH_MODE in
     exome)
-exec docker run -it -u $(id -u) -e HOME=/tmp/ -v $INPUT:/input  -v $OUTPUT:/output -v $REFERENCE:/STRetch/reference-data stretch /STRetch/stretch.bash exome
+exec docker run -it -u $(id -u) -e HOME=/tmp/ -v $INPUT:/input  -v $OUTPUT:/output -v $REFERENCE:/STRetch/reference-data stretch /STRetch/entrypoint.bash exome
         ;;
     wgs-bam)
-exec docker run -it -u $(id -u) -v $INPUT:/input  -v $OUTPUT:/output -v $REFERENCE:/STRetch/reference-data -v $BEDFILE:/input/region.bed stretch /STRetch/stretch.bash wgs-bam
+exec docker run -it -u $(id -u) -v $INPUT:/input  -v $OUTPUT:/output -v $REFERENCE:/STRetch/reference-data -v $BEDFILE:/input/region.bed stretch /STRetch/entrypoint.bash wgs-bam
         ;;
     wgs)
-exec docker run -it -u $(id -u) -v $INPUT:/input  -v $OUTPUT:/output -v $REFERENCE:/STRetch/reference-data -v $BEDFILE:/STRetch/test/SCA8_region.bed $CONTROLVOL stretch /STRetch/stretch.bash wgs "$CONTROLPAR"
+exec docker run -it -u $(id -u) -v $INPUT:/input  -v $OUTPUT:/output -v $REFERENCE:/STRetch/reference-data -v $BEDFILE:/STRetch/test/SCA8_region.bed $CONTROLVOL stretch /STRetch/entrypoint.bash wgs "$CONTROLPAR"
         ;;
     *)
        echo "No STRetch mode defined"
